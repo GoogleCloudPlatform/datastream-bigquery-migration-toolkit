@@ -4,22 +4,22 @@
 Datastream BigQuery Migration Toolkit is an open-source software offered by Google Cloud which makes it easy for customers to migrate from Dataflow's [Datastream to BigQuery template](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery) to [Datastream's native BigQuery replication solution](https://cloud.google.com/datastream-for-bigquery).  
 The toolkit creates a Datastream-compatible BigQuery table in the user's Google Cloud project, and copies the content of a BigQuery table created by Dataflow to the newly created BigQuery table.
 
-On a high level, the migration story consists of the following steps:
+At a high level, the migration consists of the following steps:
 1. Create, start and pause a Datastream stream with a BigQuery destination.
 2. Run the migration tool on each BigQuery table that needs to be migrated.
 3. Resume the stream.
 
 ## Overview
 The toolkit does the following:
-1. Retrieves the source table schema using Datastream's [discover API](https://cloud.google.com/datastream/docs/using-datastream-apis#creating_and_managing_connection_profiles).
+1. Retrieves the source table schema using the Datastream [discover API](https://cloud.google.com/datastream/docs/using-datastream-apis#creating_and_managing_connection_profiles).
 2. Creates a Datastream-compatible BigQuery table based on the retrieved schema.
 3. Fetches the schema of the BigQuery table from which you're migrating to determine the necessary data type conversions.
 4. Copies all existing rows from the original table to the new table, including appropriate column type [casts](https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions#cast).
 
-This migration is designed for Datastream customers migrating off of Dataflow's [Datastream to BigQuery template](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery), but it can also assist in migration from other pipelines, as explained below.
+This migration tool is designed primarily for Datastream customers migrating from Dataflow's [Datastream to BigQuery template](https://cloud.google.com/dataflow/docs/guides/templates/provided/datastream-to-bigquery), but can also be used to assist in migrations from other pipelines, as explained below.
 
 ## Limitations
-* The toolkit expects column names in the existing and new BigQuery tables to match (ignoring metadata columns). This should be the case if no Dataflow user-defined functions (UDFs) were applied on the existing table.
+* The toolkit expects column names in the existing and new BigQuery tables to match exactly (ignoring metadata columns). This should already be the case if no user-defined functions (UDFs) were applied on the table in the Dataflow template.
 * Cross-region and cross-project migrations aren't supported.
 * The migration works on a per-table basis.
 * Supports only Oracle and MySQL sources.
@@ -91,15 +91,17 @@ The most convenient way to run the migration toolkit is by using `docker`:
 
 You're all set!
 
-## Step-by-step guide for migration from Dataflow to Datastream's native solution
+## Step-by-step guide for migration
 
-1. [Create a Datastream stream with a BigQuery destination](https://cloud.google.com/datastream/docs/quickstart-replication-to-bigquery)
-    > When configuring the source, make sure to choose manual backfill under `Choose backfill mode for historical data -> Manual` ([learn more](https://cloud.google.com/datastream/docs/create-a-stream#configuresourcedb)).
-2. Start the stream, and immediately pause it. This allows Datastream to capture CDC events before the migration starts.
-    >   NOTE: It is possible that between starting and pausing, Datastream processes some events, thus creating a BigQuery table. In such a case, you must manually delete the table before proceeding with the migration, otherwise the migration will fail.
+1. [Create a new Datastream stream with a BigQuery destination](https://cloud.google.com/datastream/docs/quickstart-replication-to-bigquery). When configuring the source:
+    * Select the tables that are being migrated.
+    * Make sure to choose manual backfill under `Choose backfill mode for historical data -> Manual` ([learn more](https://cloud.google.com/datastream/docs/create-a-stream#configuresourcedb)). 
 
-3. Drain the Datastream and Dataflow pipeline:
-   1. Pause the existing Cloud Storage destination stream.
+2. Start the stream, and immediately pause it. This allows Datastream to capture the position from which it reads the change stream when the migration starts.
+    >   NOTE: It is possible that between starting and pausing the stream, Datastream processes some events which will result in tables being created in BigQuery. In this case, make sure to manually delete the tables before proceeding with the migration, otherwise the migration will fail.
+
+3. Ensure that all changes from the old stream are loaded to the BigQuery table:
+   1. Pause the original Datastream stream and wait for it to complete draining. Make sure that the stream status changes to PAUSED.
    2. Check the total latency metric for the stream and wait at least as long as the current latency to ensure that any in-flight events are written to the destination.
    3. [Drain the Dataflow job](https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline#drain).
 
@@ -108,12 +110,12 @@ You're all set!
       ```
       docker run -v output:/output -ti --volumes-from gcloud-config migration-service python3 ./migration/migrate_table.py dry_run \
       --project-id <GOOGLE_CLOUD_PROJECT_ID> \
-      --stream-id <STREAM_NAME> \
+      --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
       --datastream-region <STREAM_REGION> \
       --source-schema-name <SOURCE_SCHEMA_NAME> \
       --source-table-name <SOURCE_TABLE_NAME> \
       --bigquery-source-dataset-name <BIGQUERY_SOURCE_DATASET_NAME> \
-      --bigquery-source-table-name <BIGQUERY_SOURCE_TABLE_NAME> 
+      --bigquery-source-table-name <BIGQUERY_SOURCE_TABLE_NAME>
       ```
    2. Inspect the `.sql` files under `output/create_target_table` and `output/copy_rows`. These are the SQL commands that will be executed on your Google Cloud project:
       ```
@@ -126,7 +128,7 @@ You're all set!
       ```
       docker run -v output:/output -ti --volumes-from gcloud-config migration-service python3 ./migration/migrate_table.py full \
       --project-id <GOOGLE_CLOUD_PROJECT_ID> \
-      --stream-id <STREAM_NAME> \
+      --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
       --datastream-region <STREAM_REGION> \
       --source-schema-name <SOURCE_SCHEMA_NAME> \
       --source-table-name <SOURCE_TABLE_NAME> \
@@ -144,26 +146,24 @@ You're all set!
    ```
    Completed writing %d records into..
    ```
-   This log signals that the new stream successfully loaded data to BigQuery.  
+   This log indicates that the new stream successfully loaded data to BigQuery.  
    Note: this log will appear only if there is CDC data to ingest.
 
 
 ## Migrating from other pipelines
-The toolkit enables you to onboard from other pipelines to Datastream's native BigQuery solution.  
-The toolkit can generate `CREATE TABLE` DDLs for Datastream-compatible BigQuery tables, based on source database schema, by using `dry_run`:
+The toolkit enables you to migrate other pipelines to Datastream's native BigQuery solution.  
+The toolkit can generate `CREATE TABLE` DDLs for Datastream-compatible BigQuery tables, based on the source database schema, by using `dry_run`:
 ```
 docker run -v output:/output -ti --volumes-from gcloud-config migration-service python3 ./migration/migrate_table.py dry_run \
 --project-id <GOOGLE_CLOUD_PROJECT_ID> \
---stream-id <STREAM_NAME> \
+--stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
 --datastream-region <STREAM_REGION> \
 --source-schema-name <SOURCE_SCHEMA_NAME> \
 --source-table-name <SOURCE_TABLE_NAME> \
 --bigquery-source-dataset-name <BIGQUERY_SOURCE_DATASET_NAME> \
 --bigquery-source-table-name <BIGQUERY_SOURCE_TABLE_NAME>
 ```
-Since the BigQuery table schemas may vary, we can't provide a universal SQL statement for copying rows.  
-You can use the schemas at `output/create_target_table`, `output/source_table_ddl` to compose a SQL statement, with the appropriate [casts](https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions) on the `{source_columns}`.  
-The following is an example SQL statement format that you can use:
+Since the BigQuery table schemas may vary, we can't provide a universal SQL statement for copying rows. You can use the schemas at `output/create_target_table` and `output/source_table_ddl` to compose a SQL statement, with the appropriate [casts](https://cloud.google.com/bigquery/docs/reference/standard-sql/conversion_functions) on the `{source_columns}`. The following is an example SQL statement format that you can use:
 ```
 INSERT INTO {destination_table} ({destination_columns}) SELECT {source_columns} FROM {source_table};
 ```
