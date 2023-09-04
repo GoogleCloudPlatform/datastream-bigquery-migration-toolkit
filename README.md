@@ -86,7 +86,11 @@ The most convenient way to run the migration toolkit is by using `docker`:
    ```
 4. Set your Google Cloud project property:
    ```
-   docker run -ti --volumes-from gcloud-config migration gcloud config set project <YOUR GOOGLE CLOUD PROJECT>
+   docker run -ti --volumes-from gcloud-config migration gcloud config set project <GOOGLE_CLOUD_PROJECT_ID>
+   ```
+5. Set your quota project:
+   ```
+   docker run -ti --volumes-from gcloud-config migration gcloud auth application-default set-quota-project <GOOGLE_CLOUD_PROJECT_ID>
    ```
 
 You're all set!
