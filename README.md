@@ -78,15 +78,19 @@ The most convenient way to run the migration toolkit is by using `docker`:
    ```
 2. Build the image:
    ```
-   docker build -t migration-service .
+   docker build -t migration .
    ```
 3. Authenticate with your gcloud credentials:
    ```
-   docker run -ti --name gcloud-config migration-service gcloud auth application-default login
+   docker run -ti --name gcloud-config migration gcloud auth application-default login
    ```
 4. Set your Google Cloud project property:
    ```
-   docker run -ti --volumes-from gcloud-config migration-service gcloud config set project <YOUR GOOGLE CLOUD PROJECT>
+   docker run -ti --volumes-from gcloud-config migration gcloud config set project <GOOGLE_CLOUD_PROJECT_ID>
+   ```
+5. Set your quota project:
+   ```
+   docker run -ti --volumes-from gcloud-config migration gcloud auth application-default set-quota-project <GOOGLE_CLOUD_PROJECT_ID>
    ```
 
 You're all set!
@@ -108,7 +112,7 @@ You're all set!
 4. Execute the migration:
    1. Run the migration in `dry_run` mode:
       ```
-      docker run -v output:/output -ti --volumes-from gcloud-config migration-service python3 ./migration/migrate_table.py dry_run \
+      docker run -v output:/output -ti --volumes-from gcloud-config migration dry_run \
       --project-id <GOOGLE_CLOUD_PROJECT_ID> \
       --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
       --datastream-region <STREAM_REGION> \
@@ -126,7 +130,7 @@ You're all set!
       ```
    3. To execute the SQL commands, run the migration in `full` mode:
       ```
-      docker run -v output:/output -ti --volumes-from gcloud-config migration-service python3 ./migration/migrate_table.py full \
+      docker run -v output:/output -ti --volumes-from gcloud-config migration full \
       --project-id <GOOGLE_CLOUD_PROJECT_ID> \
       --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
       --datastream-region <STREAM_REGION> \
@@ -154,7 +158,7 @@ You're all set!
 The toolkit enables you to migrate other pipelines to Datastream's native BigQuery solution.  
 The toolkit can generate `CREATE TABLE` DDLs for Datastream-compatible BigQuery tables, based on the source database schema, by using `dry_run`:
 ```
-docker run -v output:/output -ti --volumes-from gcloud-config migration-service python3 ./migration/migrate_table.py dry_run \
+docker run -v output:/output -ti --volumes-from gcloud-config migration dry_run \
 --project-id <GOOGLE_CLOUD_PROJECT_ID> \
 --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
 --datastream-region <STREAM_REGION> \
