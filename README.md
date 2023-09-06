@@ -112,7 +112,7 @@ You're all set!
 4. Execute the migration:
    1. Run the migration in `dry_run` mode:
       ```
-      docker run -v output:/output -ti --volumes-from gcloud-config migration dry_run \
+      docker run -v output:/output -ti --volumes-from gcloud-config migration python3 ./migration/migrate_table.py dry_run \
       --project-id <GOOGLE_CLOUD_PROJECT_ID> \
       --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
       --datastream-region <STREAM_REGION> \
@@ -123,14 +123,14 @@ You're all set!
       ```
    2. Inspect the `.sql` files under `output/create_target_table` and `output/copy_rows`. These are the SQL commands that will be executed on your Google Cloud project:
       ```
-      docker run -v output:/output -ti migration-service find output/create_target_table -type f -print -exec cat {} \;
+      docker run -v output:/output -ti migration find output/create_target_table -type f -print -exec cat {} \;
       ```
       ```
-      docker run -v output:/output -ti migration-service find output/copy_rows -type f -print -exec cat {} \;
+      docker run -v output:/output -ti migration find output/copy_rows -type f -print -exec cat {} \;
       ```
    3. To execute the SQL commands, run the migration in `full` mode:
       ```
-      docker run -v output:/output -ti --volumes-from gcloud-config migration full \
+      docker run -v output:/output -ti --volumes-from gcloud-config migration python3 ./migration/migrate_table.py full \
       --project-id <GOOGLE_CLOUD_PROJECT_ID> \
       --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
       --datastream-region <STREAM_REGION> \
@@ -158,7 +158,7 @@ You're all set!
 The toolkit enables you to migrate other pipelines to Datastream's native BigQuery solution.  
 The toolkit can generate `CREATE TABLE` DDLs for Datastream-compatible BigQuery tables, based on the source database schema, by using `dry_run`:
 ```
-docker run -v output:/output -ti --volumes-from gcloud-config migration dry_run \
+docker run -v output:/output -ti --volumes-from gcloud-config migration python3 ./migration/migrate_table.py dry_run \
 --project-id <GOOGLE_CLOUD_PROJECT_ID> \
 --stream-id <BIGQUERY_DESTINATION_STREAM_ID> \
 --datastream-region <STREAM_REGION> \

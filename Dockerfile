@@ -20,5 +20,3 @@ COPY README.md /
 COPY CONTRIBUTING.md /
 
 RUN pip install -r ./migration/requirements.txt
-
-ENTRYPOINT ["python3", "./migration/migrate_table.py"]
