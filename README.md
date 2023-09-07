@@ -171,3 +171,6 @@ Since the BigQuery table schemas may vary, we can't provide a universal SQL stat
 ```
 INSERT INTO {destination_table} ({destination_columns}) SELECT {source_columns} FROM {source_table};
 ```
+
+## Support
+Use the [Google group](https://groups.google.com/g/datastream-migration-toolkit) to ask questions about the toolkit.
