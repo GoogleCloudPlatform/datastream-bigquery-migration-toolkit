@@ -19,4 +19,12 @@ COPY LICENSE /
 COPY README.md /
 COPY CONTRIBUTING.md /
 
-RUN pip install -r ./migration/requirements.txt
+RUN apt -y install python3-venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN python3 -m venv /opt/venv && \
+    . /opt/venv/bin/activate && \
+    pip install -U pip && \
+    pip install -U -r ./migration/requirements.txt
+
+CMD ["source", "/opt/venv/bin/activate"]
